@@ -298,3 +298,67 @@ module "cors_courses" {
   api_resource_id = aws_api_gateway_resource.courses.id
   
 }  
+
+// get-course
+
+resource "aws_api_gateway_resource" "course" {
+  parent_id   = aws_api_gateway_resource.courses.id
+  path_part   = "{id}"
+  rest_api_id = aws_api_gateway_rest_api.this.id
+}
+
+resource "aws_api_gateway_method" "get_course" {
+  authorization = "NONE"
+  http_method   = "GET"
+  resource_id   = aws_api_gateway_resource.course.id
+  rest_api_id   = aws_api_gateway_rest_api.this.id
+  request_parameters = {
+    "method.request.path.id" = true
+  }
+}
+
+resource "aws_api_gateway_integration" "get_course" {
+  rest_api_id             = aws_api_gateway_rest_api.this.id
+  resource_id             = aws_api_gateway_resource.course.id
+  http_method             = aws_api_gateway_method.get_course.http_method
+  integration_http_method = "POST"
+  type                    = "AWS"
+  uri                     = module.lambda_functions.lambda_get_course_invoke_arn
+
+  // lambda_get_course_invoke_arn
+  
+  request_templates = {
+    "application/json" = <<EOF
+{
+  "id": "$input.params('id')"
+}
+EOF
+  }
+  content_handling = "CONVERT_TO_TEXT"
+}
+
+resource "aws_api_gateway_method_response" "get_course" {
+  rest_api_id     = aws_api_gateway_rest_api.this.id
+  resource_id     = aws_api_gateway_resource.course.id
+  http_method     = aws_api_gateway_method.get_course.http_method
+  status_code     = "200"
+  response_models = { "application/json" = "Empty" }
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true,
+    "method.response.header.Access-Control-Allow-Methods" = true,
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "get_course" {
+  rest_api_id = aws_api_gateway_rest_api.this.id
+  resource_id = aws_api_gateway_resource.course.id
+  http_method = aws_api_gateway_method.get_course.http_method
+  status_code = aws_api_gateway_method_response.get_course.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,OPTIONS,POST,PUT,DELETE'",
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
